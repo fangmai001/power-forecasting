@@ -78,6 +78,40 @@ power-forecasting/
 pip install -r requirements.txt
 ```
 
+## 🚀 執行方式
+
+### 1. 命令列模式
+
+使用命令列模式執行預測：
+
+```bash
+python main.py --data data/raw/data.csv --periods 30 --freq D --plot
+```
+
+參數說明：
+- `--data`: 輸入數據 CSV 檔案路徑（必要）
+- `--output`: 預測結果輸出目錄（預設：`data/processed`）
+- `--periods`: 預測期數（預設：30）
+- `--freq`: 預測頻率（D=日，W=週，M=月，預設：D）
+- `--plot`: 是否顯示視覺化圖表
+
+### 2. 互動式儀表板
+
+使用 Streamlit 互動式儀表板：
+
+```bash
+streamlit run app/dashboard.py
+```
+
+儀表板功能：
+- 上傳歷史用電量數據
+- 查看原始數據與趨勢圖
+- 訓練模型
+- 設定預測參數
+- 查看預測結果
+- 下載預測結果
+- 季節性分析
+
 ## 📊 預測範圍與用途
 
 - 適用於中長期工廠用電預測（如月/季/年）
@@ -95,3 +129,50 @@ pip install -r requirements.txt
 開發者：`<你的名字>`
 E-mail：`<你的 email>`  
 版本：`v1.0`
+
+## 🐳 Docker 開發環境
+
+本專案提供 Docker 開發環境，方便在不同平台上進行開發和測試。
+
+### 環境配置
+
+專案包含以下 Docker 相關文件：
+
+1. `Dockerfile` - 定義開發環境配置
+2. `.dockerignore` - 指定不需要複製到容器中的文件
+3. `docker-compose.yml` - 容器編排配置
+
+### 使用方式
+
+1. 構建 Docker 映像：
+```bash
+docker-compose build
+```
+
+2. 啟動開發環境：
+```bash
+docker-compose up -d
+```
+
+3. 進入容器：
+```bash
+docker-compose exec app bash
+```
+
+4. 關閉開發環境：
+```bash
+docker-compose down
+```
+
+5. 刪除所有標記為 <none> 的 images
+```bash
+docker image prune -f
+```
+
+### 開發環境特點
+
+- 基於 Ubuntu 22.04
+- 預裝 Python 3 和必要的開發工具
+- 自動安裝專案依賴
+- 支援即時代碼修改（通過卷掛載）
+- 配置了適當的環境變量

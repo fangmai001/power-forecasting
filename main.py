@@ -78,15 +78,18 @@ def main():
     # 評估模型績效
     print('\n模型績效評估：')
     for model_name, pred_df in predictions.items():
-        # 使用最後 N 筆數據進行評估
-        actual = df.tail(len(pred_df))
+        # 確保實際值和預測值的長度匹配
+        min_length = min(len(df), len(pred_df))
+        actual = df.head(min_length)
+        pred_df = pred_df.head(min_length)
         metrics = evaluator.calculate_metrics(
             actual['power_consumption'].values,
             pred_df['power_consumption'].values
         )
         print(f'\n{model_name} 模型：')
-        for metric, value in metrics.items():
-            print(f'{metric}: {value:.2f}')
+        print(f"平均絕對誤差 (MAE): {metrics['MAE']:.2f} kWh")
+        print(f"均方根誤差 (RMSE): {metrics['RMSE']:.2f} kWh")
+        print(f"平均絕對百分比誤差 (MAPE): {metrics['MAPE']:.2f}%")
     
     # 視覺化（如果需要）
     if args.plot:
