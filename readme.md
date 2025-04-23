@@ -1,6 +1,6 @@
-# 🔌 工廠用電預測系統
+# power-forecasting
 
-## 📋 專案簡介
+## 🔌 工廠用電預測系統
 
 本專案旨在預測台灣工廠長期用電趨勢，採用 **XGBoost** 與 **Prophet** 雙模型架構，整合時間特徵與週期性變化進行建模與預測。提供互動式查詢介面（Streamlit）供內部使用者快速查看預測趨勢與模型績效比較。
 
@@ -82,6 +82,7 @@ streamlit run app/dashboard.py
 ## 🐳 Docker 開發環境
 
 ### 使用指令
+
 ```bash
 # 構建映像
 docker-compose build
