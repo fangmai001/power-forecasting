@@ -4,7 +4,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import matplotlib.pyplot as plt
 import seaborn as sns
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 class PowerVisualizer:
     """用電量視覺化工具類別"""
@@ -13,7 +13,7 @@ class PowerVisualizer:
     def plot_consumption_trend(df: pd.DataFrame,
                              date_column: str = 'date',
                              target_column: str = 'power_consumption',
-                             use_plotly: bool = True) -> None:
+                             use_plotly: bool = True) -> go.Figure:
         """
         繪製用電量趨勢圖
         
@@ -22,6 +22,9 @@ class PowerVisualizer:
             date_column: 日期欄位名稱
             target_column: 目標變數欄位名稱
             use_plotly: 是否使用 Plotly
+            
+        Returns:
+            Plotly 圖表物件
         """
         if use_plotly:
             fig = go.Figure()
@@ -39,7 +42,7 @@ class PowerVisualizer:
                 yaxis_title='用電量 (kWh)',
                 template='plotly_white'
             )
-            fig.show()
+            return fig
             
         else:
             plt.figure(figsize=(12, 6))
@@ -50,12 +53,12 @@ class PowerVisualizer:
             plt.grid(True)
             plt.xticks(rotation=45)
             plt.tight_layout()
-            plt.show()
+            return plt.gcf()
     
     @staticmethod
     def plot_seasonal_patterns(df: pd.DataFrame,
                              date_column: str = 'date',
-                             target_column: str = 'power_consumption') -> None:
+                             target_column: str = 'power_consumption') -> go.Figure:
         """
         繪製季節性模式圖
         
@@ -63,6 +66,9 @@ class PowerVisualizer:
             df: 數據框
             date_column: 日期欄位名稱
             target_column: 目標變數欄位名稱
+            
+        Returns:
+            Plotly 圖表物件
         """
         df = df.copy()
         df[date_column] = pd.to_datetime(df[date_column])
@@ -113,17 +119,20 @@ class PowerVisualizer:
             title_text='用電量季節性模式分析',
             showlegend=False
         )
-        fig.show()
+        return fig
     
     @staticmethod
     def plot_feature_importance(importance_df: pd.DataFrame,
-                              top_n: int = 10) -> None:
+                              top_n: int = 10) -> plt.Figure:
         """
         繪製特徵重要性圖
         
         Args:
             importance_df: 特徵重要性數據框
             top_n: 顯示前 N 個重要特徵
+            
+        Returns:
+            Matplotlib 圖表物件
         """
         plt.figure(figsize=(10, 6))
         
@@ -140,12 +149,12 @@ class PowerVisualizer:
         plt.xlabel('重要性分數')
         plt.ylabel('特徵名稱')
         plt.tight_layout()
-        plt.show()
+        return plt.gcf()
     
     @staticmethod
     def plot_error_distribution(y_true: np.ndarray,
                               y_pred: np.ndarray,
-                              model_name: str = 'Model') -> None:
+                              model_name: str = 'Model') -> plt.Figure:
         """
         繪製預測誤差分布圖
         
@@ -153,6 +162,9 @@ class PowerVisualizer:
             y_true: 實際值
             y_pred: 預測值
             model_name: 模型名稱
+            
+        Returns:
+            Matplotlib 圖表物件
         """
         errors = y_true - y_pred
         
@@ -176,4 +188,4 @@ class PowerVisualizer:
         plt.ylabel('預測值')
         
         plt.tight_layout()
-        plt.show() 
+        return plt.gcf() 

@@ -1,136 +1,171 @@
 import pandas as pd
 import numpy as np
-from typing import Dict, List, Tuple
+from typing import Dict, List
+from sklearn.metrics import mean_absolute_error, mean_squared_error, mean_absolute_percentage_error
 import matplotlib.pyplot as plt
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
+import seaborn as sns
 
 class ModelEvaluator:
-    """模型評估器類別"""
+    def __init__(self):
+        """初始化評估器"""
+        pass
     
-    @staticmethod
-    def calculate_metrics(y_true: np.ndarray,
-                        y_pred: np.ndarray) -> Dict[str, float]:
+    def calculate_metrics(self, y_true: pd.Series, y_pred: pd.Series) -> Dict[str, float]:
         """
         計算評估指標
         
         Args:
-            y_true: 實際值
+            y_true: 真實值
             y_pred: 預測值
             
         Returns:
-            包含各項指標的字典
+            Dict[str, float]: 評估指標
         """
-        mae = np.mean(np.abs(y_true - y_pred))
-        rmse = np.sqrt(np.mean((y_true - y_pred) ** 2))
-        mape = np.mean(np.abs((y_true - y_pred) / y_true)) * 100
-        
-        return {
-            'MAE': mae,
-            'RMSE': rmse,
-            'MAPE': mape
+        metrics = {
+            'MAE': mean_absolute_error(y_true, y_pred),
+            'RMSE': np.sqrt(mean_squared_error(y_true, y_pred)),
+            'MAPE': mean_absolute_percentage_error(y_true, y_pred)
         }
+        return metrics
     
-    def compare_models(self,
-                      actual_df: pd.DataFrame,
-                      predictions: Dict[str, pd.DataFrame],
-                      target_column: str = 'power_consumption') -> Dict[str, Dict[str, float]]:
+    def compare_models(self, results: Dict[str, Dict[str, pd.DataFrame]]) -> pd.DataFrame:
         """
-        比較不同模型的預測績效
+        比較不同模型的表現
         
         Args:
-            actual_df: 實際值數據框
-            predictions: 各模型預測結果字典
-            target_column: 目標變數欄位名稱
+            results: 模型預測結果
             
         Returns:
-            各模型評估指標的字典
+            pd.DataFrame: 模型比較結果
         """
-        results = {}
+        comparison = []
         
-        for model_name, pred_df in predictions.items():
-            # 確保日期對齊
-            merged = pd.merge(
-                actual_df,
-                pred_df,
-                on='date',
-                suffixes=('_actual', '_pred')
+        for model_name, model_results in results.items():
+            metrics = self.calculate_metrics(
+                model_results['y_true'],
+                model_results['y_pred']
             )
-            
-            y_true = merged[f'{target_column}_actual']
-            y_pred = merged[f'{target_column}_pred']
-            
-            results[model_name] = self.calculate_metrics(y_true, y_pred)
-            
-        return results
+            metrics['model'] = model_name
+            comparison.append(metrics)
+        
+        return pd.DataFrame(comparison)
     
-    def plot_predictions(self,
-                        actual_df: pd.DataFrame,
-                        predictions: Dict[str, pd.DataFrame],
-                        target_column: str = 'power_consumption',
-                        use_plotly: bool = True) -> None:
+    def plot_predictions(self, results: Dict[str, Dict[str, pd.DataFrame]], 
+                        title: str = 'Model Predictions Comparison'):
         """
         繪製預測結果比較圖
         
         Args:
-            actual_df: 實際值數據框
-            predictions: 各模型預測結果字典
-            target_column: 目標變數欄位名稱
-            use_plotly: 是否使用 Plotly（否則使用 Matplotlib）
+            results: 模型預測結果
+            title: 圖表標題
         """
-        if use_plotly:
-            fig = go.Figure()
+        plt.figure(figsize=(12, 6))
+        
+        for model_name, model_results in results.items():
+            plt.plot(model_results['y_pred'].index, 
+                    model_results['y_pred'].values,
+                    label=f'{model_name} Prediction')
+        
+        plt.plot(results[list(results.keys())[0]]['y_true'].index,
+                results[list(results.keys())[0]]['y_true'].values,
+                label='Actual',
+                color='black',
+                linestyle='--')
+        
+        plt.title(title)
+        plt.xlabel('Date')
+        plt.ylabel('Power Consumption')
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+        
+        return plt.gcf()
+    
+    def plot_residuals(self, results: Dict[str, Dict[str, pd.DataFrame]]):
+        """
+        繪製殘差圖
+        
+        Args:
+            results: 模型預測結果
+        """
+        n_models = len(results)
+        fig, axes = plt.subplots(n_models, 1, figsize=(12, 4*n_models))
+        
+        if n_models == 1:
+            axes = [axes]
+        
+        for (model_name, model_results), ax in zip(results.items(), axes):
+            residuals = model_results['y_true'] - model_results['y_pred']
             
-            # 添加實際值
-            fig.add_trace(go.Scatter(
-                x=actual_df['date'],
-                y=actual_df[target_column],
-                name='實際值',
-                line=dict(color='black', width=2)
-            ))
-            
-            # 添加各模型預測值
-            colors = ['red', 'blue']
-            for (model_name, pred_df), color in zip(predictions.items(), colors):
-                fig.add_trace(go.Scatter(
-                    x=pred_df['date'],
-                    y=pred_df[target_column],
-                    name=f'{model_name} 預測',
-                    line=dict(color=color, width=2)
-                ))
-            
-            fig.update_layout(
-                title='用電量預測比較',
-                xaxis_title='日期',
-                yaxis_title='用電量',
-                template='plotly_white'
-            )
-            fig.show()
-            
-        else:
-            plt.figure(figsize=(12, 6))
-            
-            # 繪製實際值
-            plt.plot(actual_df['date'],
-                    actual_df[target_column],
-                    'k-',
-                    label='實際值',
-                    linewidth=2)
-            
-            # 繪製各模型預測值
-            colors = ['r-', 'b-']
-            for (model_name, pred_df), color in zip(predictions.items(), colors):
-                plt.plot(pred_df['date'],
-                        pred_df[target_column],
-                        color,
-                        label=f'{model_name} 預測',
-                        linewidth=2)
-            
-            plt.title('用電量預測比較')
-            plt.xlabel('日期')
-            plt.ylabel('用電量')
-            plt.legend()
-            plt.grid(True)
-            plt.xticks(rotation=45)
-            plt.tight_layout()
-            plt.show() 
+            sns.histplot(residuals, kde=True, ax=ax)
+            ax.set_title(f'{model_name} Residuals Distribution')
+            ax.set_xlabel('Residuals')
+            ax.set_ylabel('Frequency')
+        
+        plt.tight_layout()
+        return fig
+    
+    def plot_feature_importance(self, feature_importance: pd.DataFrame, 
+                              top_n: int = 10):
+        """
+        繪製特徵重要性圖
+        
+        Args:
+            feature_importance: 特徵重要性數據
+            top_n: 顯示前 N 個重要特徵
+        """
+        plt.figure(figsize=(10, 6))
+        
+        # 選取前 N 個重要特徵
+        top_features = feature_importance.head(top_n)
+        
+        # 繪製水平條形圖
+        sns.barplot(x='importance', y='feature', data=top_features)
+        
+        plt.title('Top Feature Importance')
+        plt.xlabel('Importance')
+        plt.ylabel('Feature')
+        plt.tight_layout()
+        
+        return plt.gcf()
+    
+    def plot_forecast_intervals(self, forecast: pd.DataFrame, 
+                              actual: pd.Series = None):
+        """
+        繪製預測區間圖
+        
+        Args:
+            forecast: 預測結果（包含預測值和上下界）
+            actual: 實際值（可選）
+        """
+        plt.figure(figsize=(12, 6))
+        
+        # 繪製預測區間
+        plt.fill_between(forecast.index,
+                        forecast['lower_bound'],
+                        forecast['upper_bound'],
+                        alpha=0.2,
+                        label='Prediction Interval')
+        
+        # 繪製預測值
+        plt.plot(forecast.index,
+                forecast['prediction'],
+                label='Prediction',
+                color='blue')
+        
+        # 如果有實際值，則繪製
+        if actual is not None:
+            plt.plot(actual.index,
+                    actual.values,
+                    label='Actual',
+                    color='black',
+                    linestyle='--')
+        
+        plt.title('Forecast with Prediction Intervals')
+        plt.xlabel('Date')
+        plt.ylabel('Power Consumption')
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+        
+        return plt.gcf() 

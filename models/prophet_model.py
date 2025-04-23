@@ -1,93 +1,146 @@
+from prophet import Prophet
 import pandas as pd
 import numpy as np
-from prophet import Prophet
-from typing import Tuple, Dict
-from datetime import datetime
+from typing import Dict, List
+from sklearn.metrics import mean_absolute_error, mean_squared_error, mean_absolute_percentage_error
 
 class ProphetModel:
-    """Prophet 模型類別"""
-    
     def __init__(self, params: Dict = None):
+        """
+        初始化 Prophet 模型
+        
+        Args:
+            params: Prophet 模型參數
+        """
         self.params = params or {
+            'changepoint_prior_scale': 0.05,
+            'seasonality_prior_scale': 10.0,
+            'holidays_prior_scale': 10.0,
+            'seasonality_mode': 'multiplicative',
+            'changepoint_range': 0.8,
             'yearly_seasonality': True,
             'weekly_seasonality': True,
-            'daily_seasonality': True,
-            'seasonality_mode': 'multiplicative'
+            'daily_seasonality': True
         }
+        self.model = None
+        
+    def prepare_data(self, df: pd.DataFrame, target_col: str) -> pd.DataFrame:
+        """
+        準備 Prophet 所需的資料格式
+        
+        Args:
+            df: 輸入資料
+            target_col: 目標變數名稱
+            
+        Returns:
+            pd.DataFrame: 格式化後的資料
+        """
+        prophet_df = df.reset_index()
+        prophet_df = prophet_df.rename(columns={
+            'timestamp': 'ds',
+            target_col: 'y'
+        })
+        return prophet_df[['ds', 'y']]
+    
+    def train(self, df: pd.DataFrame, target_col: str):
+        """
+        訓練 Prophet 模型
+        
+        Args:
+            df: 輸入資料
+            target_col: 目標變數名稱
+        """
+        # 準備資料
+        prophet_df = self.prepare_data(df, target_col)
+        
+        # 初始化模型
         self.model = Prophet(**self.params)
         
-    def prepare_data(self,
-                    df: pd.DataFrame,
-                    date_column: str = 'date',
-                    target_column: str = 'power_consumption') -> pd.DataFrame:
-        """
-        準備 Prophet 所需的數據格式
-        
-        Args:
-            df: 輸入數據框
-            date_column: 日期欄位名稱
-            target_column: 目標變數欄位名稱
-            
-        Returns:
-            Prophet 格式的數據框
-        """
-        prophet_df = df[[date_column, target_column]].copy()
-        prophet_df.columns = ['ds', 'y']
-        return prophet_df
+        # 訓練模型
+        self.model.fit(prophet_df)
     
-    def train(self, df: pd.DataFrame) -> None:
+    def predict(self, df: pd.DataFrame, periods: int = 30, freq: str = 'D') -> pd.DataFrame:
         """
-        訓練模型
+        使用訓練好的模型進行預測
         
         Args:
-            df: Prophet 格式的數據框（含 ds 和 y 欄位）
-        """
-        self.model.fit(df)
-        
-    def predict(self, periods: int, freq: str = 'D') -> pd.DataFrame:
-        """
-        進行預測
-        
-        Args:
+            df: 輸入資料
             periods: 預測期數
-            freq: 頻率（D=日，W=週，M=月）
+            freq: 預測頻率
             
         Returns:
-            預測結果數據框
+            pd.DataFrame: 預測結果
         """
-        future = self.model.make_future_dataframe(periods=periods, freq=freq)
+        # 建立未來時間序列
+        future = pd.DataFrame({
+            'ds': df.index
+        })
+        
+        # 進行預測
         forecast = self.model.predict(future)
-        return forecast
+        
+        # 整理預測結果
+        result = forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']]
+        result = result.rename(columns={'ds': 'timestamp'})
+        result.set_index('timestamp', inplace=True)
+        
+        return result
     
-    def evaluate(self,
-                y_true: np.ndarray,
-                y_pred: np.ndarray) -> Tuple[float, float, float]:
+    def evaluate(self, y_true: pd.Series, y_pred: pd.Series) -> Dict[str, float]:
         """
-        評估模型績效
+        評估模型表現
         
         Args:
-            y_true: 實際值
+            y_true: 真實值
             y_pred: 預測值
             
         Returns:
-            MAE, RMSE, MAPE
+            Dict[str, float]: 評估指標
         """
-        mae = np.mean(np.abs(y_true - y_pred))
-        rmse = np.sqrt(np.mean((y_true - y_pred) ** 2))
-        mape = np.mean(np.abs((y_true - y_pred) / y_true)) * 100
-        
-        return mae, rmse, mape
+        metrics = {
+            'MAE': mean_absolute_error(y_true, y_pred),
+            'RMSE': np.sqrt(mean_squared_error(y_true, y_pred)),
+            'MAPE': mean_absolute_percentage_error(y_true, y_pred)
+        }
+        return metrics
     
-    def get_components(self) -> Dict:
+    def get_components(self) -> Dict[str, pd.DataFrame]:
         """
-        獲取預測的各個組成部分
+        獲取模型組件
         
         Returns:
-            包含趨勢、季節性等組成部分的字典
+            Dict[str, pd.DataFrame]: 模型組件
         """
-        return {
-            'trend': self.model.trend,
-            'yearly': self.model.yearly_seasonality,
-            'weekly': self.model.weekly_seasonality,
-            'daily': self.model.daily_seasonality
-        } 
+        if self.model is None:
+            return None
+        
+        components = {
+            'trend': self.model.history['trend'],
+            'yearly': self.model.history['yearly'],
+            'weekly': self.model.history['weekly'],
+            'daily': self.model.history['daily']
+        }
+        return components
+    
+    def save_model(self, path: str):
+        """
+        保存模型
+        
+        Args:
+            path: 模型保存路徑
+        """
+        if self.model is not None:
+            with open(path, 'wb') as f:
+                import pickle
+                pickle.dump(self.model, f)
+    
+    def load_model(self, path: str):
+        """
+        載入模型
+        
+        Args:
+            path: 模型路徑
+        """
+        with open(path, 'rb') as f:
+            import pickle
+            self.model = pickle.load(f) 

@@ -35,19 +35,40 @@ power-forecasting/
 1. **資料處理**
    - 歷史用電量資料載入與標準化
    - 時間欄位處理與缺值填補
+   - 資料分割策略：
+     - 訓練集（80%）：用於模型訓練
+     - 驗證集（10%）：用於 XGBoost 超參數調優與早停機制，對於 Prophet 模型則忽略
+     - 測試集（10%）：用於最終模型評估
 
 2. **特徵工程**
-   - 時間特徵（年、月、週、日、週末標記）
-   - 週期性特徵（sin/cos 轉換）
+   - 時間特徵：
+     - 年、月、週、日等時間維度
+     - 週末與假日標記
+   - 週期性特徵：
+     - 正弦/餘弦轉換
+     - 季節性指標
 
 3. **模型架構**
-   - XGBoost：時間特徵迴歸模型
-   - Prophet：季節性與趨勢模型
+   - XGBoost 模型：
+     - 基於時間特徵的迴歸模型
+     - 支援超參數調優與早停機制
+   - Prophet 模型：
+     - 專注於季節性與趨勢分析
+     - 自動處理節假日效應
 
 4. **預測分析**
-   - 多期預測（日/週/月）
-   - 績效評估（MAE、RMSE、MAPE）
-   - 視覺化分析
+   - 多期預測能力：
+     - 日預測
+     - 週預測
+     - 月預測
+   - 績效評估指標：
+     - 平均絕對誤差（MAE）
+     - 均方根誤差（RMSE）
+     - 平均絕對百分比誤差（MAPE）
+   - 視覺化分析：
+     - 預測趨勢圖
+     - 誤差分佈圖
+     - 模型比較圖
 
 ## 🚀 快速開始
 
@@ -63,7 +84,17 @@ pip install -r requirements.txt
 #### 1. 命令列模式
 
 ```bash
-python main.py --data data/raw/data.csv --periods 30 --freq D --plot
+# 基本執行（只提供必要參數）
+python main.py --data data/raw/data.csv
+
+# 完整執行（包含所有參數）
+python main.py --data data/raw/data.csv --output data/processed --periods 30 --freq D --plot --target_col power_consumption
+
+# 週預測範例
+python main.py --data data/raw/data.csv --periods 12 --freq W --plot
+
+# 月預測範例
+python main.py --data data/raw/data.csv --periods 6 --freq M --plot
 ```
 
 參數說明：
@@ -102,15 +133,24 @@ docker image prune -f
 
 ## 📊 應用範圍
 
-- 中長期工廠用電預測（月/季/年）
+- 中長期工廠用電預測：
+  - 月度預測
+  - 季度預測
+  - 年度預測
 - 可擴充整合：
   - 氣象資料
   - 假日因素
   - 工廠排程
-- 目前支援：歷史用電 + 時間特徵（單變數預測）
+- 目前支援：
+  - 歷史用電資料
+  - 時間特徵（單變數預測）
 
 ## 📝 開發備註
 
-- 直接比較模型在預測期間的績效
-- 支援彈性預測週期設定
-- 模組化架構設計，便於擴充
+- 模型評估：
+  - 直接比較模型在預測期間的績效
+  - 支援多種評估指標
+- 系統特色：
+  - 彈性預測週期設定
+  - 模組化架構設計
+  - 易於擴充新功能
